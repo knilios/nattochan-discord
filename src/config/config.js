@@ -33,4 +33,16 @@ module.exports = {
       'Blue Archive'
     ],
   },
+
+  // Vector Database settings
+  vectorDB: {
+    path: process.env.CHROMA_PATH || 'http://localhost:8000',
+    collectionName: process.env.CHROMA_COLLECTION || 'nattochan_memories',
+  },
+
+  // Scheduler settings
+  scheduler: {
+    memoryProcessTime: process.env.MEMORY_PROCESS_TIME || '23:00', // 11 PM
+    timezone: process.env.TIMEZONE || 'Asia/Bangkok',
+  },
 };

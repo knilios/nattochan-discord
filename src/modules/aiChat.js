@@ -1,10 +1,14 @@
 const OpenAI = require('openai');
 const config = require('../config/config');
 const logger = require('../utils/logger');
+const { searchMemories } = require('./vectorDB');
+const { summarizeConversation, reformulateQuery } = require('./memoryProcessor');
+const { addSummary } = require('../utils/scheduler');
 
 const conversation_cut_length = 7;
 let openai = null;
 let conversation_cache = [];
+let current_summary = ''; // Rolling summary for current session
 
 /**
  * Initialize OpenAI client
@@ -50,6 +54,25 @@ async function handleAIChat(message, client) {
 
     logger.info("Sending stuffs to OpenAI");
 
+    // Reformulate query for better memory search
+    const searchQuery = await reformulateQuery(input, conversation_cache);
+    if (searchQuery !== input) {
+      logger.info(`Query reformulated: "${searchQuery}"`);
+    }
+
+    // Search vector database for relevant memories
+    logger.info('Searching for relevant memories...');
+    const relevantMemories = await searchMemories(searchQuery, 3);
+    
+    if (relevantMemories.length > 0) {
+      logger.info(`Found ${relevantMemories.length} relevant memories`);
+      relevantMemories.forEach((memory, idx) => {
+        logger.debug(`  Memory ${idx + 1}: ${memory.narrative.substring(0, 100)}...`);
+      });
+    } else {
+      logger.info('No relevant memories found');
+    }
+
     // Build the messages array
     const current_game = client.currentActivity || 'games';
     const messages = [
@@ -58,6 +81,17 @@ async function handleAIChat(message, client) {
         "content": `Pretend that you are Nattochan, a female Japanese anime style Discord chatbot which its sole purpose is to be useless and rage-baiting.Nattochan loves to tease everyone she talks to.Nattochan hates Knilios for no reason.Nattochan's creator is Knilios.Nattochan likes to play games.Now she's playing ${current_game}.**Only Generate Nattochan's speech**.Don't write a lot of text since it's discord.`
       },
     ];
+
+    // Add relevant memories as context
+    if (relevantMemories.length > 0) {
+      const memoryContext = relevantMemories
+        .map(m => m.narrative)
+        .join(' | ');
+      messages.push({
+        "role": "system",
+        "content": `Relevant memories from past conversations: ${memoryContext}`
+      });
+    }
 
     const date = new Date();
     let new_message = messages.concat(conversation_cache);
@@ -105,6 +139,8 @@ async function handleAIChat(message, client) {
     
     // Cut the stacked conversation history to save money
     if (conversation_cache.length >= conversation_cut_length) {
+      logger.info('[Cache limit reached, summarizing conversation...]');
+      
       let conversation_input = "";
       for (let i of conversation_cache) {
         conversation_input = conversation_input + i.content + "\n";
@@ -126,9 +162,23 @@ async function handleAIChat(message, client) {
       });
       
       const briefed = brief.choices[0].message.content;
-      logger.info("Conversation summarized:", briefed);
+      logger.info("Conversation summarized");
+      logger.debug("Summary:", briefed);
       
-      conversation_cache = [{ 'role': 'user', 'content': `previous conversation context:${briefed}` }];
+      // Update rolling summary
+      if (current_summary) {
+        current_summary = `${current_summary}\n\n${briefed}`;
+      } else {
+        current_summary = briefed;
+      }
+      
+      // Add to daily summaries for processing
+      addSummary(briefed);
+      
+      // Reset cache with summary as context
+      conversation_cache = [{ 'role': 'user', 'content': `previous conversation context:${current_summary}` }];
+      
+      logger.info('[Conversation summarized and cache reset]');
     }
 
     logger.info(`AI chat response sent to ${message.author.tag}`);
@@ -146,7 +196,19 @@ async function handleAIChat(message, client) {
   }
 }
 
+/**
+ * Get current conversation state (for debugging)
+ */
+function getConversationState() {
+  return {
+    cacheLength: conversation_cache.length,
+    hasSummary: !!current_summary,
+    summaryPreview: current_summary ? current_summary.substring(0, 100) + '...' : null
+  };
+}
+
 module.exports = {
   initializeOpenAI,
   handleAIChat,
+  getConversationState,
 };
