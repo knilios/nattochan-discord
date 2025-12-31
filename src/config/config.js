@@ -38,6 +38,9 @@ module.exports = {
   vectorDB: {
     path: process.env.CHROMA_PATH || 'http://localhost:8000',
     collectionName: process.env.CHROMA_COLLECTION || 'nattochan_memories',
+    apiKey: process.env.CHROMA_API_KEY || null,
+    tenant: process.env.CHROMA_TENANT || 'default_tenant',
+    database: process.env.CHROMA_DATABASE || 'default_database',
   },
 
   // Scheduler settings

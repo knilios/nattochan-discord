@@ -1,4 +1,4 @@
-const { ChromaClient } = require('chromadb');
+const { ChromaClient, CloudClient } = require('chromadb');
 const OpenAI = require('openai');
 const config = require('../config/config');
 const logger = require('../utils/logger');
@@ -24,12 +24,22 @@ async function initializeVectorDB() {
       });
     }
 
-    // Initialize Chroma client
-    chromaClient = new ChromaClient({
-      path: config.vectorDB.path || 'http://localhost:8000',
-    });
-
-    logger.info(`Connecting to ChromaDB at ${config.vectorDB.path || 'http://localhost:8000'}`);
+    // Initialize Chroma client (Cloud or Local)
+    if (config.vectorDB.apiKey) {
+      // Use CloudClient for ChromaDB cloud
+      chromaClient = new CloudClient({
+        apiKey: config.vectorDB.apiKey,
+        tenant: config.vectorDB.tenant,
+        database: config.vectorDB.database,
+      });
+      logger.info('Using ChromaDB cloud with authentication');
+    } else {
+      // Use ChromaClient for local instance
+      chromaClient = new ChromaClient({
+        path: config.vectorDB.path || 'http://localhost:8000',
+      });
+      logger.info(`Using local ChromaDB instance at ${config.vectorDB.path || 'http://localhost:8000'}`);
+    }
 
     // Test connection first
     try {
