@@ -16,6 +16,8 @@ module.exports = {
 
     switch (subcommand) {
       case 'process':
+        message.channel.send("Dont use this why you so bad - Knilios")
+        break;
         await message.channel.send('⏳ Processing summaries into vector database...');
         try {
           await manualProcess();
