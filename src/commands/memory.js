@@ -15,17 +15,7 @@ module.exports = {
     const subcommand = args[0]?.toLowerCase();
 
     switch (subcommand) {
-      case 'process':
-        message.channel.send("Dont use this why you so bad - Knilios")
-        break;
-        await message.channel.send('⏳ Processing summaries into vector database...');
-        try {
-          await manualProcess();
-          await message.channel.send('✅ Memory processing complete!');
-        } catch (error) {
-          await message.channel.send(`❌ Error: ${error.message}`);
-        }
-        break;
+      
 
       case 'stats':
         const convState = getConversationState();
