@@ -1,6 +1,6 @@
 # Nattochan Discord Bot 🤖
 
-An AI-powered Discord chatbot built with Discord.js, OpenAI, and Firebase.
+An AI-powered Discord chatbot built with Discord.js, OpenAI, and ChromaDB.
 
 ## Features
 
